@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="description" content="Ant Colony — dig tunnels, build rooms, haul food and defend the queen from antlions and spiders. Free original strategy game.">
+<title>Ant Colony · Underground Strategy</title>
+<script>
+// 平台 SDK 按域名条件加载（独立运行时完全不加载，游戏行为不变）
+(function () {
+  var host = location.hostname || "";
+  try {
+    if (host.indexOf("crazygames") !== -1) {
+      var s1 = document.createElement("script");
+      s1.src = "https://sdk.crazygames.com/crazygames-sdk-v3.js";
+      s1.onload = function () {
+        if (window.CrazyGames && window.CrazyGames.SDK) {
+          window.CrazyGames.SDK.init().then(function () {
+            try { window.CrazyGames.SDK.game.loadingStart(); } catch (e) {}
+            window.addEventListener("load", function () { try { window.CrazyGames.SDK.game.loadingStop(); } catch (e) {} });
+          }).catch(function () {});
+        }
+      };
+      document.head.appendChild(s1);
+      window.__portal = "crazygames";
+    } else if (host.indexOf("gamedistribution") !== -1 || host.indexOf("html5.gamedistribution.com") !== -1 || host.indexOf("gd.games") !== -1) {
+      var s2 = document.createElement("script");
+      s2.src = "https://sdk.gamedistribution.com/v2/main.min.js";
+      document.head.appendChild(s2);
+      window.__portal = "gamedistribution";
+    }
+  } catch (e) {}
+})();
+</script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; overflow:hidden; background:#14100b; font-family:-apple-system,"Segoe UI",Arial,sans-serif; }
+  #game { position:fixed; inset:0; display:block; touch-action:none; }
+  #hud { position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:2px 10px; padding:6px 10px; pointer-events:none; z-index:3; color:#f3e8d2; text-shadow:0 1px 3px rgba(15,10,4,.85); font-size:13px; font-weight:700; }
+  #hud .grp { display:flex; gap:5px; align-items:center; }
+  #hud .tag { color:#ffce6b; }
+  #threatV.hot { color:#ff7a5c; animation:blink .5s infinite alternate; }
+  @keyframes blink { from{opacity:1} to{opacity:.35} }
+  #hud button, .hbtn { pointer-events:auto; }
+  #hud button { background:rgba(35,24,12,.72); color:#ffce6b; border:1px solid rgba(255,206,107,.45); border-radius:9px; padding:5px 9px; font-size:12px; font-weight:800; cursor:pointer; }
+  #hud button:active { transform:scale(.95); }
+  #btnrow { position:fixed; bottom:4px; left:0; right:0; display:flex; justify-content:center; gap:6px; flex-wrap:wrap; z-index:3; padding:0 4px; }
+  .hbtn { background:linear-gradient(160deg,#4a3520,#2f2113); color:#f3e8d2; border:1px solid #7a5a33; border-radius:11px; padding:7px 10px; min-height:44px; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 3px 9px rgba(10,6,2,.5); }
+  .hbtn small { display:block; font-size:10px; font-weight:600; color:#ffce6b; margin-top:1px; }
+  .hbtn:active { transform:scale(.96); }
+  .hbtn.on { background:linear-gradient(160deg,#7a5a26,#4c381a); border-color:#ffce6b; }
+  .hbtn.dis { opacity:.42; }
+  #hint { position:fixed; bottom:56px; left:0; right:0; text-align:center; color:rgba(243,232,210,.85); font-size:11px; font-weight:600; text-shadow:0 1px 2px #000; pointer-events:none; z-index:2; }
+  #overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(14,9,4,.8); backdrop-filter:blur(3px); z-index:5; }
+  #panel { background:#241a0f; border:1px solid #6d5230; border-radius:18px; padding:20px 24px; text-align:center; color:#f3e8d2; max-width:560px; width:min(94vw,560px); max-height:94vh; overflow:auto; }
+  #panel h1 { font-size:30px; letter-spacing:3px; color:#ffce6b; margin-bottom:2px; }
+  #panel h2 { font-size:24px; margin-bottom:4px; }
+  #panel p { color:#cbb593; font-size:13px; margin:5px 0; }
+  #panel .final { font-size:34px; font-weight:900; color:#ffce6b; margin:8px 0 4px; }
+  .maps { display:flex; flex-direction:column; gap:8px; margin:12px 0; }
+  .mapBtn { background:linear-gradient(160deg,#3d2c18,#2a1d10); color:#f3e8d2; border:1px solid #7a5a33; border-radius:12px; padding:10px 14px; cursor:pointer; text-align:left; }
+  .mapBtn b { font-size:15px; color:#ffce6b; }
+  .mapBtn span { display:block; font-size:11px; color:#c0a87f; margin-top:2px; }
+  .mapBtn:active { transform:scale(.98); }
+  .howto { text-align:left; font-size:12px; color:#c0a87f; margin:10px auto 4px; max-width:430px; line-height:1.55; }
+  .howto b { color:#ffce6b; }
+  .row { display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap; }
+  .pbtn { background:linear-gradient(135deg,#a5722e,#6d4a1c); color:#fff; border:none; border-radius:12px; padding:12px 28px; font-size:15px; font-weight:800; cursor:pointer; }
+  .pbtn.alt { background:#3a2a16; border:1px solid #7a5a33; color:#f3e8d2; }
+  .pbtn:active { transform:scale(.97); }
+  #footer { position:fixed; bottom:1px; left:0; right:0; text-align:center; color:rgba(230,215,185,.35); font-size:10px; pointer-events:none; z-index:2; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div class="grp"><span class="tag">Food:</span><span id="foodV">-</span></div>
+  <div class="grp"><span class="tag">Ants:</span><span id="antV">-</span></div>
+  <div class="grp"><span id="threatV"></span></div>
+  <div class="grp"><span id="timerV"></span></div>
+  <div class="grp"><button id="muteBtn">Sound: On</button><button id="spdBtn">1x</button><button id="menuBtn">Menu</button></div>
+</div>
+<div id="hint"></div>
+<div id="btnrow">
+  <button class="hbtn" id="bNur">Nursery<small>30 food · +50% eggs</small></button>
+  <button class="hbtn" id="bStore">Store<small>20 food · +30 cap</small></button>
+  <button class="hbtn" id="bBarr">Barracks<small>15 food · soldiers</small></button>
+  <button class="hbtn" id="bSol">Train Soldier<small>10 food</small></button>
+  <button class="hbtn" id="bPost">Post<small>station guard</small></button>
+  <button class="hbtn" id="bFill">Fill<small>backfill tunnel</small></button>
+</div>
+<div id="overlay"><div id="panel"></div></div>
+<div id="footer">Ant Colony — a free strategy game</div>
+<script>
+"use strict";
+// ============================================================
+// Ant Colony —— 原创地下蚁国策略：挖掘隧道、经营蚁室、抵御掠食者
+// ============================================================
+var W=960, H=584, COLS=20, ROWS=14, CW=46, CH=34, GX=20, GY=96, SURF_Y=GY-12;
+var T_D=0, T_T=1, T_F=2, T_R=3; // 泥土/隧道/回填/岩石
+var canvas=document.getElementById("game"), ctx=canvas.getContext("2d");
+var dpr=1, vw=0, vh=0, vs=1, vox=0, voy=0;
+function resize(){
+  vw=window.innerWidth||960; vh=window.innerHeight||584;
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.round(vw*dpr); canvas.height=Math.round(vh*dpr);
+  canvas.style.width=vw+"px"; canvas.style.height=vh+"px";
+  vs=Math.min(vw/W,vh/H); vox=(vw-W*vs)/2; voy=(vh-H*vs)/2;
+}
+window.addEventListener("resize",resize); resize();
+
+// ---------- 小工具 ----------
+function el(id){return document.getElementById(id);}
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+function dist(ax,ay,bx,by){var dx=ax-bx,dy=ay-by;return Math.sqrt(dx*dx+dy*dy);}
+function mulberry(seed){var t=seed>>>0;return function(){t+=0x6D2B79F5;var r=Math.imul(t^t>>>15,1|t);r^=r+Math.imul(r^r>>>7,61|r);return((r^r>>>14)>>>0)/4294967296;};}
+var rng=Math.random;
+function ri(n){return Math.floor(rng()*n);}
+function choice(a){return a[ri(a.length)];}
+function cellCX(c){return GX+c*CW+CW/2;}
+function cellCY(r){return GY+r*CH+CH/2;}
+function fmtT(s){s=Math.max(0,Math.ceil(s));var m=Math.floor(s/60);return m+":"+("0"+(s%60)).slice(-2);}
+
+// ---------- 地图 ----------
+var MAPS=[
+ {name:"Sunny Loam", desc:"Gentle pests · soft soil · calm rhythm", first:90, gap:62, food:16, dig:1.0, rock:0.05, spider:0.45},
+ {name:"Clay Hollow", desc:"Steady raids · clay bands · tighter waves", first:82, gap:56, food:17, dig:1.12, rock:0.09, spider:0.55},
+ {name:"Gravel Gulch", desc:"Hungry hunters · hard rock · restless foes", first:62, gap:50, food:18, dig:1.25, rock:0.14, spider:0.65}
+];
+var COST={nursery:30, store:20, barracks:15};
+var ROOM_NAME={nursery:"Nursery", store:"Store", barracks:"Barracks"};
+
+// ---------- 存档 ----------
+var bests=[0,0,0];
+try{var _b=JSON.parse(localStorage.getItem("ac_best_v1")||"[]");for(var _i=0;_i<3;_i++)bests[_i]=_b[_i]|0;}catch(e){}
+function saveBests(){try{localStorage.setItem("ac_best_v1",JSON.stringify(bests));}catch(e){}}
+var muted=false; try{muted=localStorage.getItem("ac_mute")==="1";}catch(e){}
+
+// ---------- 全局状态 ----------
+var S=null;
+var mode="dig"; // dig | fill | post | nursery | store | barracks
+
+// ---------- 音效（WebAudio 合成） ----------
+var actx=null, noiseBuf=null;
+function ensureAudio(){
+  try{
+    if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==="suspended")actx.resume();
+    if(!noiseBuf){ noiseBuf=actx.createBuffer(1,actx.sampleRate*0.2|0,actx.sampleRate);
+      var d=noiseBuf.getChannelData(0); for(var i=0;i<d.length;i++)d[i]=Math.random()*2-1; }
+  }catch(e){}
+}
+function beep(freq,dur,type,gainv,slide){
+  try{
+    if(!actx||muted)return;
+    var o=actx.createOscillator(),g=actx.createGain();
+    o.type=type||"sine"; o.frequency.setValueAtTime(freq,actx.currentTime);
+    if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(20,slide),actx.currentTime+dur);
+    g.gain.setValueAtTime(gainv||0.1,actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+function rustle(dur,freq,gainv){ // 挖掘沙沙（带通噪声）
+  try{
+    if(!actx||muted||!noiseBuf)return;
+    var s=actx.createBufferSource(); s.buffer=noiseBuf; s.loop=true;
+    var f=actx.createBiquadFilter(); f.type="bandpass"; f.frequency.value=freq||600; f.Q.value=1.2;
+    var g=actx.createGain(); var t=actx.currentTime;
+    g.gain.setValueAtTime(gainv||0.06,t); g.gain.exponentialRampToValueAtTime(0.001,t+(dur||0.12));
+    s.connect(f); f.connect(g); g.connect(actx.destination);
+    s.start(); s.stop(t+(dur||0.12));
+  }catch(e){}
+}
+function sDig(){rustle(0.1,400+Math.random()*500,0.05);}
+function sTap(){beep(700,0.05,"triangle",0.06);}
+function sBlip(){beep(660,0.07,"sine",0.07,990);}
+function sBuild(){beep(200,0.16,"triangle",0.12,120);rustle(0.2,300,0.06);}
+function sHatch(){beep(520,0.08,"sine",0.07,780);}
+function sAlarm(){beep(88,0.5,"sawtooth",0.1,66);beep(132,0.5,"sawtooth",0.05,99);}
+function sCatch(){beep(300,0.18,"square",0.08,70);}
+function sBattle(){beep(140,0.06,"square",0.1);rustle(0.06,900,0.08);}
+function sThud(){beep(110,0.14,"triangle",0.12,70);}
+function sQueen(){beep(90,0.3,"sawtooth",0.13,55);}
+function sErr(){beep(110,0.12,"sawtooth",0.08);}
+function sWin(){var seq=[523,659,784,1046,784,1046,1318];for(var i=0;i<seq.length;i++){var f=seq[i];(function(f,d){setTimeout(function(){beep(f,0.28,"sine",0.1);beep(f*2,0.28,"sine",0.03);},d);})(f,i*140);}}
+function sLose(){beep(220,0.5,"sawtooth",0.1,80);setTimeout(function(){beep(160,0.7,"sawtooth",0.1,55);},260);}
+
+// ---------- 网格/寻路 ----------
+function setCell(c,r,v){S.grid[c][r]=v;}
+function pass(c,r){return c>=0&&c<COLS&&r>=0&&r<ROWS&&S.grid[c][r]===T_T;}
+function key(c,r){return c+","+r;}
+function keyC(k){var p=k.split(",");return [+p[0],+p[1]];}
+function isQueenCell(c,r){return c>=9&&c<=10&&r>=12&&r<=13;}
+function nodePos(k){
+  if(k.charAt(0)==="S")return {x:cellCX(+k.slice(2)),y:SURF_Y,surf:true};
+  var p=keyC(k);return {x:cellCX(p[0]),y:cellCY(p[1]),surf:false};
+}
+function neighbors(k,allowSurf){
+  var out=[];
+  if(k.charAt(0)==="S"){
+    var c=+k.slice(2);
+    if(c>0)out.push("S,"+(c-1));
+    if(c<COLS-1)out.push("S,"+(c+1));
+    if(pass(c,0))out.push(key(c,0));
+  }else{
+    var p=keyC(k),c=p[0],r=p[1];
+    if(pass(c-1,r))out.push(key(c-1,r));
+    if(pass(c+1,r))out.push(key(c+1,r));
+    if(pass(c,r-1))out.push(key(c,r-1));
+    if(pass(c,r+1))out.push(key(c,r+1));
+    if(allowSurf&&r===0)out.push("S,"+c);
+  }
+  return out;
+}
+// 多目标 BFS：返回 path（不含起点；起点即终点时返回 []），失败返回 null
+function bfs(startKeys,goalKeys,allowSurf){
+  if(!startKeys.length||!goalKeys.length)return null;
+  var goals={},i;
+  for(i=0;i<goalKeys.length;i++)goals[goalKeys[i]]=1;
+  var par={},q=[],seen={},head=0;
+  for(i=0;i<startKeys.length;i++){
+    var sk=startKeys[i];
+    if(sk.charAt(0)!=="S"&&!pass.apply(null,keyC(sk)))continue;
+    if(seen[sk])continue; seen[sk]=1; q.push(sk);
+  }
+  while(head<q.length){
+    var k=q[head++];
+    if(goals[k]){
+      var path=[],x=k;
+      while(par[x]!==undefined){path.unshift(x);x=par[x];}
+      return path;
+    }
+    var nbs=neighbors(k,allowSurf);
+    for(var j=0;j<nbs.length;j++){var nk=nbs[j];if(!seen[nk]){seen[nk]=1;par[nk]=k;q.push(nk);}}
+  }
+  return null;
+}
+function entranceKeys(){
+  var out=[];for(var c=0;c<COLS;c++)if(pass(c,0))out.push(key(c,0));return out;
+}
+function depositKeys(){
+  var out=[key(9,12),key(10,12),key(9,13),key(10,13)];
+  for(var i=0;i<S.rooms.length;i++)if(S.rooms[i].type==="store")out=out.concat(S.rooms[i].keys);
+  return out;
+}
+function isDeposit(c,r){
+  if(isQueenCell(c,r))return true;
+  for(var i=0;i<S.rooms.length;i++){var rm=S.rooms[i];
+    if(rm.type==="store"){for(var j=0;j<rm.keys.length;j++){var p=keyC(rm.keys[j]);if(p[0]===c&&p[1]===r)return true;}}}
+  return false;
+}
+function fleeGoals(sp){ // 逃跑目标：避开蜘蛛邻格的存粮点
+  var ks=depositKeys();
+  if(!sp)return ks;
+  var out=ks.filter(function(k){
+    var p=keyC(k);
+    return Math.max(Math.abs(sp.cx-p[0]),Math.abs(sp.cy-p[1]))>1;
+  });
+  return out.length?out:ks;
+}
+function hasDugNeighbor(c,r){
+  return pass(c-1,r)||pass(c+1,r)||pass(c,r-1)||pass(c,r+1);
+}
+function standCellsFor(c,r){ // 挖掘站位：目标格四周已挖通的邻格（实时计算）
+  var out=[];
+  if(pass(c-1,r))out.push(key(c-1,r));
+  if(pass(c+1,r))out.push(key(c+1,r));
+  if(pass(c,r-1))out.push(key(c,r-1));
+  if(pass(c,r+1))out.push(key(c,r+1));
+  return out;
+}
+
+// ---------- 新开一局 ----------
+function surfacePossible(){
+  // 蚁后室到地表存在可挖通路（岩石视为不可挖）
+  var seen={},q=[[9,12]],head=0;seen[key(9,12)]=1;
+  while(head<q.length){
+    var p=q[head++];
+    if(p[1]===0)return true;
+    var dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(var d=0;d<4;d++){
+      var c=p[0]+dirs[d][0],r=p[1]+dirs[d][1];
+      if(c<0||c>=COLS||r<0||r>=ROWS)continue;
+      if(S.grid[c][r]===T_R)continue;
+      var k=key(c,r);if(seen[k])continue;seen[k]=1;q.push([c,r]);
+    }
+  }
+  return false;
+}
+function newGame(mi,seed){
+  var m=MAPS[mi];
+  S={mi:mi,m:m,screen:"play",paused:false,speed:1,time:0,food:40,cap:60,
+     queen:{hp:6,max:6,x:cellCX(9)+CW/2,y:cellCY(12)+2},
+     grid:[],noise:[],rooms:[],roomMap:{},ants:[],broods:[],foods:[],threats:[],spiders:[],
+     digs:[],fills:[],parts:[],floats:[],
+     threatT:m.first,foodT:5,threatN:0,eggT:10,gathered:0,lost:0,
+     over:false,won:false,reason:"",alarm:false,alarmDone:false,queenFlash:0,
+     nextId:1,foodSpawns:true,threatsOn:true,digSeq:0,stepT:0};
+  S.rng=mulberry(seed!=null?seed:(Math.random()*1e9)|0);
+  rng=S.rng;
+  var c,r;
+  for(c=0;c<COLS;c++){S.grid[c]=[];S.noise[c]=[];for(r=0;r<ROWS;r++){S.grid[c][r]=T_D;S.noise[c][r]=rng();}}
+  setCell(9,12,T_T);setCell(10,12,T_T);setCell(9,13,T_T);setCell(10,13,T_T);
+  // 岩石生成 + 可达性验证（保证初始蚁后室可以挖通到地表）
+  // 蚁后室正上方两列（9-10）永不出岩石——从蚁后室垂直上挖必然可行
+  var tries=0;
+  do{
+    for(c=0;c<COLS;c++)for(r=0;r<ROWS;r++){
+      if(S.grid[c][r]===T_R)S.grid[c][r]=T_D;
+      if(r>0&&!(c>=9&&c<=10)&&rng()<m.rock)S.grid[c][r]=T_R;
+    }
+    tries++;
+  }while(!surfacePossible()&&tries<80);
+  for(var i=0;i<5;i++)spawnAnt("w",9+(i%2),12+((i>>1)%2));
+  mode="dig";
+  hideOverlay();updateHUD();setHint();
+}
+function spawnAnt(type,c,r){
+  var a={id:S.nextId++,type:type,c:c,r:r,x:cellCX(c),y:cellCY(r),dirX:1,
+    path:[],state:"idle",carry:0,eatT:rng()*12,job:null,digId:null,guard:null,
+    ph:rng()*6.28,dead:false,onSurf:false,attackT:0};
+  S.ants.push(a);return a;
+}
+function alivePop(){var n=0;for(var i=0;i<S.ants.length;i++)if(!S.ants[i].dead)n++;return n;}
+function antById(id){for(var i=0;i<S.ants.length;i++)if(S.ants[i].id===id)return S.ants[i];return null;}
+function foodById(id){for(var i=0;i<S.foods.length;i++)if(S.foods[i].id===id)return S.foods[i];return null;}
+function digById(id){for(var i=0;i<S.digs.length;i++)if(S.digs[i].id===id)return S.digs[i];return null;}
+function roomAt(c,r){return S.roomMap[key(c,r)]||null;}
+function soldiersInCell(c,r){var out=[];for(var i=0;i<S.ants.length;i++){var a=S.ants[i];if(!a.dead&&a.type==="s"&&!a.onSurf&&a.c===c&&a.r===r)out.push(a);}return out;}
+function workersInCell(c,r){var out=[];for(var i=0;i<S.ants.length;i++){var a=S.ants[i];if(!a.dead&&a.type==="w"&&!a.onSurf&&a.c===c&&a.r===r)out.push(a);}return out;}
+function killAnt(a,silent){
+  if(a.dead)return;
+  a.dead=true;S.lost++;
+  if(a.job&&a.job.food){var f=foodById(a.job.food);if(f)f.claimed=Math.max(0,f.claimed-1);}
+  poof(a.x,a.y,a.type==="w"?"#8a5a2b":"#a03d20",8);
+  if(!silent)sCatch();
+}
+
+// ---------- 粒子/浮字 ----------
+function poof(x,y,color,n){
+  for(var i=0;i<(n||8);i++){
+    var an=Math.random()*Math.PI*2,sp=40+Math.random()*90;
+    S.parts.push({x:x,y:y,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp-40,life:0.45+Math.random()*0.2,color:color,size:1.5+Math.random()*2.5,grav:260});
+  }
+}
+function debris(x,y){
+  for(var i=0;i<7;i++){
+    var an=-Math.PI/2+(Math.random()-0.5)*2.4,sp=30+Math.random()*70;
+    S.parts.push({x:x,y:y,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp,life:0.4+Math.random()*0.25,color:Math.random()<0.5?"#6b4a2c":"#8a6538",size:1.5+Math.random()*2,grav:300});
+  }
+}
+function floatTxt(x,y,txt,color){S.floats.push({x:x,y:y,txt:txt,life:1.1,color:color||"#ffe9b8"});}
+
+// ---------- 移动 ----------
+function curKey(a){
+  if(a.onSurf)return "S,"+clamp(Math.round((a.x-GX-CW/2)/CW),0,COLS-1);
+  return key(a.c,a.r);
+}
+function stepAlong(a,dt,surfSpd,gndSpd){
+  var guard=0;
+  while(dt>0&&a.path&&a.path.length&&guard++<40){
+    var n=a.path[0],p=nodePos(n);
+    var onS=(n.charAt(0)==="S");
+    var spd=onS?surfSpd:gndSpd;
+    var dx=p.x-a.x,dy=p.y-a.y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d>0.001&&Math.abs(dx)>2)a.dirX=dx>0?1:-1;
+    var mv=spd*dt;
+    if(d<=mv){
+      a.x=p.x;a.y=p.y;dt-=(d/spd);a.onSurf=onS;a.ph+=0.5;
+      a.path.shift();
+      if(!onS){var pp=keyC(n);a.c=pp[0];a.r=pp[1];}
+      // 下一格被回填/封死 → 重新寻路
+      if(a.path.length){
+        var nx=a.path[0];
+        if(nx.charAt(0)!=="S"&&!pass.apply(null,keyC(nx))){repathAnt(a);return;}
+      }
+    }else{
+      a.x+=dx/d*mv;a.y+=dy/d*mv;a.ph+=dt*10;dt=0;
+    }
+  }
+}
+function repathAnt(a){
+  var from=curKey(a);
+  // 采食途中断路：优先重新找食物的路；不可达则改为回家
+  if(a.state==="forage"&&a.job&&a.job.phase==="out"&&a.job.food){
+    var f0=foodById(a.job.food);
+    if(f0){
+      var p0=foodPath(a,f0);
+      if(p0){a.path=p0;return;}
+      f0.claimed=Math.max(0,f0.claimed-1);a.job.food=null;a.job.phase="back";
+    }else{a.job=null;a.state="idle";a.path=[];return;}
+  }
+  var goals=null,allow=true;
+  if(a.state==="goDig"&&a.digId!=null){var d=digById(a.digId);goals=d?d.stand:null;allow=false;}
+  else if(a.state==="forage"&&a.job&&a.job.phase==="back")goals=depositKeys();
+  else if(a.state==="forage"&&a.job&&a.job.food){var f=foodById(a.job.food);if(f)goals=null;}
+  else if(a.state==="goHome"||a.state==="flee")goals=depositKeys();
+  else if(a.state==="goGuard"&&a.guard)goals=[key(a.guard[0],a.guard[1])];
+  else if(a.state==="hunt"){var sp=liveSpider();goals=sp?[key(sp.cx,sp.cy)]:depositKeys();allow=false;}
+  else if(a.state==="sally"){goals=depositKeys();}
+  if(a.onSurf&&(a.state==="forage"&&a.job&&a.job.phase==="out"&&a.job.food)){
+    var f2=foodById(a.job.food);
+    if(f2){a.path=surfaceOnly(curKey(a),f2.c);return;}
+  }
+  if(!goals){a.path=[];a.state=(a.carry>0)?"goHome":"idle";a.job=a.state==="idle"?null:a.job;return;}
+  var p=bfs([from],goals,allow);
+  if(!p&&allow&&a.state==="forage"&&a.job&&a.job.phase==="out"){
+    // 去食物的路断了 → 回家
+    p=bfs([from],depositKeys(),true);
+    if(p){a.job.phase="back";var f3=foodById(a.job.food);if(f3)f3.claimed=Math.max(0,f3.claimed-1);a.job.food=null;}
+  }
+  if(!p){a.path=[];if(a.state!=="digging")a.state=(a.carry>0)?"goHome":"idle";return;}
+  a.path=p;
+}
+function surfaceOnly(fromS,col){
+  // 地表横向路径：fromS 是 "S,c"
+  var c=+fromS.slice(2),out=[];
+  if(c<col)while(c<col){c++;out.push("S,"+c);}
+  else while(c>col){c--;out.push("S,"+c);}
+  return out;
+}
+function foodPath(a,f){
+  // 隧道→入口→地表→食物
+  var from=curKey(a);
+  if(a.onSurf)return surfaceOnly(from,f.c);
+  var p=bfs([from],entranceKeys(),true);
+  if(!p)return null;
+  var last=p.length?p[p.length-1]:from;
+  var ec;
+  if(last.charAt(0)==="S")ec=+last.slice(2);
+  else ec=keyC(last)[0];
+  p=p.concat(surfaceOnly("S,"+ec,f.c));
+  return p;
+}
+function pathHome(a){
+  return bfs([curKey(a)],depositKeys(),true);
+}
+
+// ---------- 挖掘/回填/建房/训练/驻守 ----------
+function diggableCell(c,r){
+  if(c<0||c>=COLS||r<0||r>=ROWS)return false;
+  var g=S.grid[c][r];
+  if(g!==T_D&&g!==T_F)return false;
+  if(roomAt(c,r)||isQueenCell(c,r))return false;
+  return hasDugNeighbor(c,r);
+}
+function orderDig(c,r){
+  if(!S||S.over)return false;
+  for(var i=0;i<S.digs.length;i++)if(S.digs[i].c===c&&S.digs[i].r===r){cancelDig(c,r);return true;} // 再点一次取消
+  if(!diggableCell(c,r)){sErr();return false;}
+  var stand=[];
+  if(pass(c-1,r))stand.push(key(c-1,r));
+  if(pass(c+1,r))stand.push(key(c+1,r));
+  if(pass(c,r-1))stand.push(key(c,r-1));
+  if(pass(c,r+1))stand.push(key(c,r+1));
+  S.digs.push({id:S.nextId++,c:c,r:r,prog:0,need:(0.8+r*0.65)*S.m.dig,assigned:[],stand:stand,snd:0});
+  sTap();return true;
+}
+function cancelDig(c,r){
+  for(var i=S.digs.length-1;i>=0;i--){
+    var d=S.digs[i];
+    if(d.c===c&&d.r===r){
+      for(var j=0;j<d.assigned.length;j++){var a=antById(d.assigned[j]);if(a&&!a.dead){a.digId=null;a.state="idle";}}
+      S.digs.splice(i,1);
+    }
+  }
+}
+function tryFill(c,r){
+  if(!S||S.over)return false;
+  if(!pass(c,r)||roomAt(c,r)||isQueenCell(c,r)){sErr();return false;}
+  for(var i=0;i<S.ants.length;i++){var a=S.ants[i];
+    if(!a.dead&&!a.onSurf&&a.c===c&&a.r===r&&a.state!=="goDig"&&a.state!=="forage"){sErr();floatTxt(cellCX(c),cellCY(r)-8,"Ant there!","#ff9a7a");return false;}
+  }
+  for(i=0;i<S.fills.length;i++)if(S.fills[i].c===c&&S.fills[i].r===r)return false;
+  S.fills.push({c:c,r:r,t:0.8});sTap();return true;
+}
+function tryBuild(type,c,r){
+  if(!S||S.over)return false;
+  var spots=[[c,r],[c-1,r],[c,r-1],[c-1,r-1]];
+  for(var s=0;s<spots.length;s++){
+    var cc=spots[s][0],rr=spots[s][1],ok=true,k;
+    if(cc<0||cc+1>=COLS||rr<0||rr+1>=ROWS)continue;
+    for(var dc=0;dc<2;dc++)for(var dr=0;dr<2;dr++){
+      k=key(cc+dc,rr+dr);
+      if(!pass(cc+dc,rr+dr)||roomAt(cc+dc,rr+dr)||isQueenCell(cc+dc,rr+dr)){ok=false;}
+    }
+    if(!ok)continue;
+    if(S.food<COST[type]){sErr();floatTxt(cellCX(cc),cellCY(rr),"Not enough food!","#ff9a7a");return false;}
+    S.food-=COST[type];
+    var keys=[];
+    for(dc=0;dc<2;dc++)for(dr=0;dr<2;dr++){k=key(cc+dc,rr+dr);S.roomMap[k]={type:type};keys.push(k);}
+    S.rooms.push({type:type,c:cc,r:rr,keys:keys});
+    floatTxt(cellCX(cc)+CW,cellCY(rr)+CH,ROOM_NAME[type]+" built!","#9fe08a");
+    sBuild();return true;
+  }
+  floatTxt(cellCX(c),cellCY(r),"Need a 2x2 dug space!","#ff9a7a");sErr();
+  return false;
+}
+function barracksCount(){var n=0;for(var i=0;i<S.rooms.length;i++)if(S.rooms[i].type==="barracks")n++;return n;}
+function nurseryCount(){var n=0;for(var i=0;i<S.rooms.length;i++)if(S.rooms[i].type==="nursery")n++;return n;}
+function trainSoldier(){
+  if(!S||S.over)return false;
+  if(barracksCount()<1){sErr();floatTxt(S.queen.x,S.queen.y-24,"Build a Barracks first!","#ff9a7a");return false;}
+  if(S.food<10){sErr();floatTxt(S.queen.x,S.queen.y-24,"Need 10 food!","#ff9a7a");return false;}
+  if(alivePop()>=24){sErr();return false;}
+  S.food-=10;
+  var br=barracksRoom();var p=keyC(br.keys[0]);
+  S.broods.push({t:5,type:"s",c:p[0],r:p[1]});
+  sTap();return true;
+}
+function barracksRoom(){for(var i=0;i<S.rooms.length;i++)if(S.rooms[i].type==="barracks")return S.rooms[i];return S.rooms[0];}
+function postSoldier(c,r){
+  if(!S||S.over)return false;
+  if(!pass(c,r)){sErr();return false;}
+  var best=null,bd=1e9;
+  for(var i=0;i<S.ants.length;i++){var a=S.ants[i];
+    if(a.dead||a.type!=="s")continue;
+    if(a.state!=="idle"&&a.state!=="guard"&&a.state!=="hold")continue;
+    var d=dist(a.x,a.y,cellCX(c),cellCY(r));
+    if(a.state!=="idle")d+=40; // 优先闲置兵蚁
+    if(d<bd){bd=d;best=a;}
+  }
+  if(!best){floatTxt(cellCX(c),cellCY(r),"No soldier free!","#ff9a7a");sErr();return false;}
+  best.guard=[c,r];best.state="goGuard";
+  best.path=bfs([curKey(best)],[key(c,r)],true)||[];
+  sTap();return true;
+}
+
+// ---------- 采食 ----------
+function findFood(){ // 找剩余最多且未满载的食物
+  var best=null,bs=-1;
+  for(var i=0;i<S.foods.length;i++){var f=S.foods[i];
+    if(f.amount<5||f.claimed>=4)continue;
+    var sc=f.amount-f.claimed*2;
+    if(sc>bs){bs=sc;best=f;}
+  }
+  return best;
+}
+function tapFood(f){
+  var sent=0;
+  var cand=S.ants.slice().sort(function(a,b){return dist(a.x,a.y,f.fx,SURF_Y)-dist(b.x,b.y,f.fx,SURF_Y);});
+  for(var i=0;i<cand.length&&sent<2;i++){
+    var a=cand[i];
+    if(a.dead||a.type!=="w"||a.state!=="idle"||f.claimed>=4)continue;
+    var p=foodPath(a,f);
+    if(!p)continue;
+    a.job={food:f.id,phase:"out"};f.claimed++;a.path=p;a.state="forage";sent++;
+  }
+  if(sent)sTap();
+  return sent;
+}
+
+// ---------- 蚁狮讨伐 ----------
+function attackPit(pit){
+  var best=null,bd=1e9;
+  for(var i=0;i<S.ants.length;i++){var a=S.ants[i];
+    if(a.dead||a.type!=="s")continue;
+    if(a.state!=="idle"&&a.state!=="guard"&&a.state!=="hold")continue;
+    var d=dist(a.x,a.y,pit.x,SURF_Y);
+    if(d<bd){bd=d;best=a;}
+  }
+  if(!best){floatTxt(pit.x,SURF_Y-18,"No soldier free!","#ff9a7a");sErr();return false;}
+  best.state="sally";best.sallyPit=pit;
+  var from=curKey(best);
+  if(best.onSurf)best.path=surfaceOnly(from,clamp(Math.round((pit.x-GX-CW/2)/CW),0,COLS-1));
+  else{
+    var p=bfs([from],entranceKeys(),true);
+    if(!p||!p.length){ // 尚无可通向地表的隧道
+      best.state="idle";best.sallyPit=null;
+      floatTxt(pit.x,SURF_Y-18,"No route to surface!","#ff9a7a");sErr();
+      return false;
+    }
+    var last=p[p.length-1],ec=last.charAt(0)==="S"?+last.slice(2):keyC(last)[0];
+    best.path=p.concat(surfaceOnly("S,"+ec,clamp(Math.round((pit.x-GX-CW/2)/CW),0,COLS-1)));
+  }
+  sTap();return true;
+}
+
+// ---------- 工蚁 AI ----------
+function claimDig(a){
+  for(var i=0;i<S.digs.length;i++){
+    var d=S.digs[i];
+    if(d.assigned.length>=2)continue;
+    var stand=standCellsFor(d.c,d.r);
+    if(!stand.length)continue;
+    var p=bfs([curKey(a)],stand,false);
+    if(p){d.assigned.push(a.id);a.digId=d.id;a.state="goDig";a.path=p;return true;}
+  }
+  return false;
+}
+function updWorker(a,dt){
+  // 靠近蜘蛛 → 逃跑（避开蜘蛛邻近的存粮点）
+  var sp=liveSpider();
+  if(sp&&!a.onSurf&&(sp.state==="walk"||sp.state==="fight"||sp.state==="eat")){
+    var dc=Math.max(Math.abs(sp.cx-a.c),Math.abs(sp.cy-a.r));
+    if(dc<=1&&a.state!=="flee"){
+      var fp=bfs([curKey(a)],fleeGoals(sp),false);
+      if(fp){a.state="flee";a.path=fp;return;}
+    }
+  }
+  switch(a.state){
+    case"idle":
+      if(a.onSurf){var p=bfs([curKey(a)],depositKeys(),true);if(p){a.path=p;a.state="goHome";}break;}
+      claimDig(a);
+      break;
+    case"goDig":
+      stepAlong(a,dt,86,66);
+      if(!a.path.length)a.state="digging";
+      break;
+    case"digging":
+      if(a.digId==null||!digById(a.digId)){a.digId=null;a.state="idle";}
+      break;
+    case"forage":
+      stepAlong(a,dt,86,66);
+      if(!a.path.length){
+        if(a.job&&a.job.phase==="out"){
+          var f=foodById(a.job.food);
+          if(f&&f.amount>=5){f.amount-=5;f.claimed=Math.max(0,f.claimed-1);a.carry=5;a.job.phase="back";sBlip();}
+          else{
+            if(f)f.claimed=Math.max(0,f.claimed-1);
+            a.job.food=null;
+            var f2=findFood();
+            if(f2){a.job.food=f2.id;f2.claimed++;var p2=foodPath(a,f2);if(p2){a.path=p2;}else{a.job.phase="back";a.job.food=null;var p3=pathHome(a);a.path=p3||[];}}
+            else{a.job.phase="back";a.job.food=null;var p4=pathHome(a);a.path=p4||[];}
+          }
+        }else if(a.job&&a.job.phase==="back"){
+          if(isDeposit(a.c,a.r)){
+            S.food=Math.min(S.cap,S.food+5);S.gathered+=5;a.carry=0;a.job=null;a.state="idle";sBlip();
+          }else{var p5=pathHome(a);a.path=p5||[];if(!p5)a.state="goHome";}
+        }else{a.state="idle";}
+      }
+      break;
+    case"goHome":
+      stepAlong(a,dt,86,66);
+      if(!a.path.length){
+        if(a.carry>0&&isDeposit(a.c,a.r)){S.food=Math.min(S.cap,S.food+5);S.gathered+=5;a.carry=0;sBlip();}
+        else if(a.carry>0){var p6=pathHome(a);if(p6){a.path=p6;break;}}
+        a.state="idle";
+      }
+      break;
+    case"flee":
+      stepAlong(a,dt,86,66);
+      if(!a.path.length){
+        if(a.carry>0&&isDeposit(a.c,a.r)){S.food=Math.min(S.cap,S.food+5);S.gathered+=5;a.carry=0;sBlip();}
+        if(a.job&&a.job.food){var fj=foodById(a.job.food);if(fj)fj.claimed=Math.max(0,fj.claimed-1);}
+        a.state="idle";a.job=null;
+      }
+      break;
+  }
+  a.eatT+=dt;
+  if(a.eatT>=30){a.eatT-=30;if(S.food>0)S.food--;}
+}
+
+// ---------- 兵蚁 AI ----------
+function liveSpider(){for(var i=0;i<S.spiders.length;i++)if(!S.spiders[i].dead)return S.spiders[i];return null;}
+function updSoldier(a,dt){
+  var sp=liveSpider();
+  // 交战锁定：蜘蛛开战时，近身兵蚁停止移动接战
+  if(sp&&sp.state==="fight"&&!a.onSurf&&a.state!=="flee"&&dist(a.x,a.y,sp.x,sp.y)<CW*1.15){a.state="fightlock";a.path=[];}
+  switch(a.state){
+    case"idle":
+      if(sp&&(sp.state==="walk"||sp.state==="fight"||sp.state==="eat")){
+        var dc=Math.max(Math.abs(sp.cx-a.c),Math.abs(sp.cy-a.r));
+        if(dc<=2&&!a.onSurf){var p=bfs([curKey(a)],[key(sp.cx,sp.cy)],false);if(p){a.state="hunt";a.path=p;}}
+      }
+      break;
+    case"hold":
+      if(!sp||sp.dead)a.state="idle";
+      else if((Math.max(Math.abs(sp.cx-a.c),Math.abs(sp.cy-a.r))<=2)&&!(a.c===sp.cx&&a.r===sp.cy)){a.state="hunt";a.huntT=null;}
+      break;
+    case"fightlock":
+      if(!sp||sp.dead||sp.state!=="fight"){
+        if(a.guard&&pass(a.guard[0],a.guard[1])){a.state="goGuard";a.path=bfs([curKey(a)],[key(a.guard[0],a.guard[1])],true)||[];}
+        else a.state="idle";
+      }
+      break;
+    case"goGuard":
+      stepAlong(a,dt,74,54);
+      if(!a.path.length){
+        if(a.guard&&pass(a.guard[0],a.guard[1]))a.state="guard";
+        else a.state="idle";
+      }
+      break;
+    case"guard":
+      if(!a.guard||!pass(a.guard[0],a.guard[1]))a.state="idle";
+      break;
+    case"hunt":
+      if(!sp||sp.dead){a.state="idle";a.path=[];break;}
+      var tgt=key(sp.cx,sp.cy);
+      if(a.huntT!==tgt){a.huntT=tgt;var hp2=bfs([curKey(a)],[tgt],false);if(hp2)a.path=hp2;}
+      stepAlong(a,dt,74,56);
+      if(!a.path.length)a.state="hold";
+      break;
+    case"sally":
+      var pit=a.sallyPit;
+      if(!pit||pit.dead){a.sallyPit=null;var ph=pathHome(a);a.path=ph||[];a.state=ph?"goHome":"idle";break;}
+      stepAlong(a,dt,84,60);
+      if(!a.path.length){
+        if(dist(a.x,a.y,pit.x,SURF_Y)<30){
+          pit.dmg+=dt;a.ph+=dt*14;
+          if(a.ph%1<dt*14)sBattle();
+          if(pit.dmg>=3.5){pit.dead=true;floatTxt(pit.x,SURF_Y-16,"Pit destroyed!","#9fe08a");poof(pit.x,SURF_Y-6,"#c9a05c",14);sThud();
+            a.sallyPit=null;var ph2=pathHome(a);a.path=ph2||[];a.state=ph2?"goHome":"idle";}
+        }else{ // 走到坑边
+          a.x+=(pit.x>a.x?1:-1)*30*dt;
+        }
+      }
+      break;
+  }
+  a.eatT+=dt;
+  if(a.eatT>=30){a.eatT-=30;if(S.food>0)S.food--;}
+}
+
+// ---------- 挖掘进度 / 回填 / 蚁后产卵 ----------
+function updDigs(dt){
+  for(var i=S.digs.length-1;i>=0;i--){
+    var d=S.digs[i];
+    d.assigned=d.assigned.filter(function(id){var a=antById(id);return a&&!a.dead;});
+    var n=0;
+    for(var j=0;j<d.assigned.length;j++){var a=antById(d.assigned[j]);if(a&&a.state==="digging")n++;}
+    if(n>0){
+      d.prog+=dt*(n>=2?1.5:1);
+      d.snd+=dt;
+      if(d.snd>0.45){d.snd=0;sDig();debris(cellCX(d.c),cellCY(d.r));}
+      if(d.prog>=d.need){
+        S.grid[d.c][d.r]=T_T;
+        debris(cellCX(d.c),cellCY(d.r));
+        sThud();
+        for(var k=0;k<d.assigned.length;k++){var a2=antById(d.assigned[k]);if(a2&&!a2.dead){a2.digId=null;a2.state="idle";}}
+        S.digs.splice(i,1);
+      }
+    }
+  }
+  for(i=S.fills.length-1;i>=0;i--){
+    var fl=S.fills[i];
+    fl.t-=dt;
+    var occupied=false;
+    for(var m=0;m<S.ants.length;m++){var a3=S.ants[m];if(!a3.dead&&!a3.onSurf&&a3.c===fl.c&&a3.r===fl.r){occupied=true;break;}}
+    if(occupied)continue;
+    if(fl.t<=0){
+      S.grid[fl.c][fl.r]=T_F;sThud();
+      S.fills.splice(i,1);
+    }
+  }
+}
+function updBroods(dt){
+  for(var i=S.broods.length-1;i>=0;i--){
+    var b=S.broods[i];
+    b.t-=dt;
+    if(b.t<=0){
+      S.broods.splice(i,1);
+      spawnAnt(b.type,b.c,b.r);
+      sHatch();
+      floatTxt(cellCX(b.c),cellCY(b.r),b.type==="s"?"Soldier!":"Worker born!","#9fe08a");
+    }
+  }
+  // 蚁后自动产工蚁
+  S.eggT-=dt;
+  var iv=13/(1+0.5*nurseryCount());
+  if(S.eggT<=0){
+    if(S.food>=5&&alivePop()<24){
+      S.food-=5;
+      S.broods.push({t:5,type:"w",c:choice([9,10]),r:choice([12,13])});
+      S.eggT=iv;
+    }else S.eggT=3;
+  }
+}
+
+// ---------- 食物刷新 ----------
+function updFoods(dt){
+  if(S.foodSpawns){
+    S.foodT-=dt;
+    if(S.foodT<=0){
+      if(S.foods.length<4){
+        S.foods.push({id:S.nextId++,c:1+ri(COLS-2),fx:0,amount:25,claimed:0,kind:rng()<0.5?"seed":"honey",bob:rng()*6.28});
+        var f=S.foods[S.foods.length-1];f.fx=cellCX(f.c);
+      }
+      S.foodT=S.m.food*(0.8+rng()*0.4);
+    }
+  }
+  for(var i=S.foods.length-1;i>=0;i--){
+    var f2=S.foods[i];
+    if(f2.amount<=0&&f2.claimed<=0)S.foods.splice(i,1);
+  }
+}
+
+// ---------- 威胁 ----------
+function spawnThreat(){
+  var type=rng()<S.m.spider?"spider":"pit";
+  var es=entranceCols();
+  if(type==="pit"){
+    var c;
+    if(es.length)c=clamp(choice(es)+ri(5)-2,0,COLS-1);else c=ri(COLS);
+    S.threats.push({kind:"pit",c:c,x:cellCX(c),r:34,life:30,dmg:0,dead:false});
+    floatTxt(cellCX(c),SURF_Y-18,"Antlion pit!","#ff9a7a");
+  }else{
+    var sp={cx:-1,cy:-1,x:0,y:SURF_Y,hp:2+Math.min(2,Math.floor(S.threatN/4)),path:[],state:"surface",biteT:0,ec:0,lifeT:22,dir:1,dead:false,ph:rng()*6.28};
+    if(es.length)sp.ec=choice(es);else sp.ec=ri(COLS);
+    sp.x=clamp(cellCX(sp.ec)+(rng()<0.5?-1:1)*(180+rng()*180),30,W-30);
+    S.spiders.push(sp);
+    floatTxt(sp.x,SURF_Y-20,"Spider raid!","#ff9a7a");
+  }
+  sAlarm();
+}
+function entranceCols(){var out=[];for(var c=0;c<COLS;c++)if(pass(c,0))out.push(c);return out;}
+function moveSpider(sp,dt,surfSpd,gndSpd){
+  var guard=0;
+  while(dt>0&&sp.path&&sp.path.length&&guard++<40){
+    var n=sp.path[0],p=nodePos(n);
+    var spd=n.charAt(0)==="S"?surfSpd:gndSpd;
+    var dx=p.x-sp.x,dy=p.y-sp.y,d=Math.sqrt(dx*dx+dy*dy);
+    if(Math.abs(dx)>2)sp.dir=dx>0?1:-1;
+    var mv=spd*dt;
+    if(d<=mv){
+      sp.x=p.x;sp.y=p.y;dt-=d/spd;sp.ph+=0.4;
+      sp.path.shift();
+      if(n.charAt(0)!=="S"){var pp=keyC(n);sp.cx=pp[0];sp.cy=pp[1];}
+      if(sp.path.length){var nx=sp.path[0];if(nx.charAt(0)!=="S"&&!pass.apply(null,keyC(nx))){sp.path=[];return false;}}
+    }else{sp.x+=dx/d*mv;sp.y+=dy/d*mv;sp.ph+=dt*8;dt=0;}
+  }
+  return true;
+}
+function soldierNear(sp,rad){ // 距离判定：防止蜘蛛与兵蚁“交错而过”漏判战斗
+  for(var i=0;i<S.ants.length;i++){
+    var a=S.ants[i];
+    if(a.dead||a.type!=="s"||a.onSurf)continue;
+    if(dist(a.x,a.y,sp.x,sp.y)<rad)return a;
+  }
+  return null;
+}
+function spiderCatchSurface(sp,rad){
+  for(var i=0;i<S.ants.length;i++){
+    var a=S.ants[i];
+    if(a.dead||a.type!=="w"||!a.onSurf)continue;
+    if(Math.abs(a.x-sp.x)<rad&&Math.abs(a.y-SURF_Y)<24){killAnt(a);floatTxt(a.x,a.y-10,"Snatched!","#ff9a7a");}
+  }
+}
+function updSpiders(dt){
+  for(var si=S.spiders.length-1;si>=0;si--){
+    var sp=S.spiders[si];
+    if(sp.dead){S.spiders.splice(si,1);continue;}
+    switch(sp.state){
+      case"surface":
+        var tx=cellCX(sp.ec);
+        var dx=tx-sp.x;
+        sp.dir=dx>0?1:-1;
+        sp.x+=clamp(dx,-70*dt,70*dt);sp.ph+=dt*9;
+        spiderCatchSurface(sp,16);
+        if(Math.abs(dx)<3){
+          if(pass(sp.ec,0)){
+            sp.cx=sp.ec;sp.cy=0;
+            var p=bfs([key(sp.ec,0)],queenKeys(),false);
+            if(p){sp.path=p;sp.state="walk";}
+            else{sp.state="wander";sp.lifeT=22;}
+          }else{
+            var es=entranceCols();
+            if(es.length)sp.ec=choice(es);
+            else{sp.state="wander";sp.lifeT=20;}
+          }
+        }
+        break;
+      case"walk":
+        moveSpider(sp,dt,70,46);
+        // 近距接战（含交错判定）
+        var ns=soldierNear(sp,CW*0.9);
+        if(ns){sp.cx=ns.c;sp.cy=ns.r;sp.x=cellCX(ns.c);sp.y=cellCY(ns.r);sp.path=[];sp.state="fight";sp.biteT=0;sBattle();break;}
+        // 顺路吞食同格工蚁
+        var ws=workersInCell(sp.cx,sp.cy);
+        if(ws.length){
+          sp.biteT+=dt;
+          if(sp.biteT>=1.2){sp.biteT=0;killAnt(ws[0]);floatTxt(ws[0].x,ws[0].y-10,"Eaten!","#ff9a7a");}
+        }
+        var ss=soldiersInCell(sp.cx,sp.cy);
+        if(ss.length||soldierNear(sp,CW*0.9)){sp.state="fight";sp.biteT=0;sBattle();}
+        else if(isQueenCell(sp.cx,sp.cy)){sp.state="eat";sp.biteT=0;sp.wBiteT=0;}
+        if(!sp.path.length&&sp.state==="walk"){
+          // 断路 → 原地徘徊
+          var p2=bfs([key(sp.cx,sp.cy)],queenKeys(),false);
+          if(p2&&p2.length)sp.path=p2;
+          else{sp.state="wander";sp.lifeT=18;}
+        }
+        break;
+      case"fight":{
+        // 锁定周边兵蚁互战：1.4s 咬死一只，每杀一只自损 1 HP
+        var sN=soldierNear(sp,CW*1.15);
+        if(sN){sp.cx=sN.c;sp.cy=sN.r;}
+        sp.biteT+=dt;
+        var s=soldierNear(sp,CW*1.15+2),w=workersInCell(sp.cx,sp.cy);
+        if(sp.biteT>=1.4){
+          sp.biteT=0;sBattle();
+          if(s){killAnt(s);sp.hp--;floatTxt(sp.x,sp.y-16,"-1","#ffce6b");}
+          else if(w.length){killAnt(w[0]);floatTxt(sp.x,sp.y-16,"Eaten!","#ff9a7a");}
+        }
+        if(sp.hp<=0){
+          sp.dead=true;
+          floatTxt(sp.x,sp.y-20,"Spider slain!","#9fe08a");
+          poof(sp.x,sp.y,"#4a3a55",16);sThud();
+          break;
+        }
+        if(!soldierNear(sp,CW*1.3)&&!w.length){
+          if(isQueenCell(sp.cx,sp.cy)){sp.state="eat";sp.biteT=0;sp.wBiteT=0;}
+          else{
+            var p3=bfs([key(sp.cx,sp.cy)],queenKeys(),false);
+            if(p3&&p3.length){sp.path=p3;sp.state="walk";}
+            else{sp.state="wander";sp.lifeT=18;}
+          }
+        }
+        break;}
+      case"eat":
+        // 蚁后室里：优先啃蚁后，顺带吞掉同格工蚁
+        sp.biteT+=dt;
+        sp.wBiteT=(sp.wBiteT||0)+dt;
+        S.queenFlash=0.4;
+        if(sp.wBiteT>=1.2){
+          sp.wBiteT=0;
+          var wq=workersInCell(sp.cx,sp.cy);
+          if(wq.length)killAnt(wq[0]);
+        }
+        if(sp.biteT>=1.6){
+          sp.biteT=0;S.queen.hp--;sQueen();
+          poof(S.queen.x+(rng()-0.5)*20,S.queen.y,"#ff7a5c",6);
+          if(S.queen.hp<=0){endGame(false,"The queen was devoured");return;}
+        }
+        var s2=soldiersInCell(sp.cx,sp.cy);
+        if(s2.length||soldierNear(sp,CW*0.9)){sp.state="fight";sp.biteT=0;sBattle();}
+        break;
+      case"wander":
+        sp.lifeT-=dt;
+        sp.x+=sp.dir*46*dt;
+        if(sp.x<30||sp.x>W-30)sp.dir*=-1;
+        spiderCatchSurface(sp,16);
+        // 入口重开 → 杀入
+        if(pass(sp.ec,0)&&Math.abs(sp.x-cellCX(sp.ec))<8){
+          sp.cx=sp.ec;sp.cy=0;
+          var p4=bfs([key(sp.ec,0)],queenKeys(),false);
+          if(p4&&p4.length){sp.path=p4;sp.state="walk";}
+        }
+        if(sp.lifeT<=0)sp.state="leave";
+        break;
+      case"leave":
+        sp.x+=sp.dir*70*dt;sp.ph+=dt*10;
+        if(sp.x<-30||sp.x>W+30)sp.dead=true;
+        break;
+    }
+  }
+}
+function queenKeys(){return [key(9,12),key(10,12),key(9,13),key(10,13)];}
+function updPits(dt){
+  for(var i=S.threats.length-1;i>=0;i--){
+    var p=S.threats[i];
+    if(p.dead){S.threats.splice(i,1);continue;}
+    p.life-=dt;
+    if(p.life<=0){p.dead=true;floatTxt(p.x,SURF_Y-16,"Antlion left","#c0a87f");continue;}
+    for(var j=0;j<S.ants.length;j++){
+      var a=S.ants[j];
+      if(a.dead||a.type!=="w"||!a.onSurf)continue;
+      if(Math.abs(a.x-p.x)<p.r*0.8&&Math.abs(a.y-SURF_Y)<26){
+        killAnt(a);floatTxt(a.x,a.y-10,"Caught!","#ff9a7a");
+      }
+    }
+  }
+}
+function updThreatTimer(dt){
+  if(!S.threatsOn)return;
+  S.threatT-=dt;
+  if(S.threatT<=5&&!S.alarmDone){S.alarmDone=true;S.alarm=true;sAlarm();}
+  if(S.threatT<=0){
+    spawnThreat();
+    S.threatT=S.m.gap*(0.9+rng()*0.25);
+    S.threatN++;
+    S.alarmDone=false;
+    S.alarm=false;
+  }
+  if(S.threatT>6)S.alarm=false;
+}
+
+// ---------- 胜负 ----------
+function endGame(won,reason){
+  if(S.over)return;
+  S.over=true;S.won=won;S.reason=reason;
+  var pop=alivePop();
+  S.score=pop*10+Math.floor(S.gathered/2)+S.rooms.length*25+(won?150:0);
+  if(S.score>bests[S.mi]){bests[S.mi]=S.score;S.newBest=true;saveBests();}
+  try{
+    if(window.__portal==="crazygames"&&window.CrazyGames&&window.CrazyGames.SDK){
+      window.CrazyGames.SDK.game.gameplayStop();
+      if(won)window.CrazyGames.SDK.game.happytime();
+    }
+  }catch(e){}
+  if(won)sWin();else sLose();
+  showEnd();
+}
+function checkEnd(){
+  if(S.over)return;
+  var pop=alivePop();
+  if(S.queen.hp<=0){endGame(false,"The queen was devoured");return;}
+  if(S.food<=0&&pop<3){endGame(false,"The colony starved");return;}
+  if(S.time>=600&&pop>=10){endGame(true,"");return;}
+  if(S.time>=900&&pop<10){endGame(false,"The colony stayed too small");return;}
+}
+
+// ---------- 主更新 ----------
+function update(dt){
+  S.time+=dt;
+  updThreatTimer(dt);
+  updFoods(dt);
+  for(var i=0;i<S.ants.length;i++){
+    var a=S.ants[i];
+    if(a.dead)continue;
+    if(a.type==="w")updWorker(a,dt);else updSoldier(a,dt);
+  }
+  updDigs(dt);
+  updBroods(dt);
+  updSpiders(dt);
+  updPits(dt);
+  // 清理死亡
+  var alive=[];
+  for(i=0;i<S.ants.length;i++)if(!S.ants[i].dead)alive.push(S.ants[i]);
+  S.ants=alive;
+  checkEnd();
+  updateFx(dt);
+}
+function updateFx(dt){
+  for(var i=S.parts.length-1;i>=0;i--){
+    var p=S.parts[i];
+    p.life-=dt;
+    if(p.life<=0){S.parts.splice(i,1);continue;}
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.grav*dt;
+  }
+  for(i=S.floats.length-1;i>=0;i--){
+    var f=S.floats[i];
+    f.life-=dt;f.y-=26*dt;
+    if(f.life<=0)S.floats.splice(i,1);
+  }
+  if(S.queenFlash>0)S.queenFlash-=dt;
+}
+
+// ---------- 渲染 ----------
+function soilColor(c,r){
+  var t=r/(ROWS-1);
+  var top,bot;
+  if(S.mi===0){top=[122,82,48];bot=[74,47,26];}
+  else if(S.mi===1){top=[128,72,50];bot=[82,44,26];}
+  else{top=[112,88,54];bot=[68,49,28];}
+  var n=(S.noise[c][r]-0.5)*16;
+  var rr=Math.round(top[0]+(bot[0]-top[0])*t+n);
+  var gg=Math.round(top[1]+(bot[1]-top[1])*t+n*0.8);
+  var bb=Math.round(top[2]+(bot[2]-top[2])*t+n*0.6);
+  return "rgb("+rr+","+gg+","+bb+")";
+}
+function hash2(a,b){var h=Math.sin(a*127.1+b*311.7)*43758.5453;return h-Math.floor(h);}
+function render(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle="#14100b";
+  ctx.fillRect(0,0,vw,vh);
+  ctx.setTransform(dpr*vs,0,0,dpr*vs,dpr*vox,dpr*voy);
+  if(!S||S.screen!=="play"){drawBackdrop();return;}
+  // 天空
+  var sky=ctx.createLinearGradient(0,0,0,GY);
+  sky.addColorStop(0,"#7fb2d8");sky.addColorStop(1,"#c8d9a8");
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,GY);
+  ctx.fillStyle="rgba(255,240,190,.9)";
+  ctx.beginPath();ctx.arc(W-90,34,20,0,Math.PI*2);ctx.fill();
+  // 地表草皮
+  ctx.fillStyle="#4e7a2f";
+  ctx.fillRect(0,GY-8,W,8);
+  ctx.fillStyle="#3c6023";
+  for(var gx=0;gx<W;gx+=14)ctx.fillRect(gx+((gx*7)%9),GY-12,2,5);
+  // 泥土格
+  var c,r,x,y;
+  for(c=0;c<COLS;c++)for(r=0;r<ROWS;r++){
+    x=GX+c*CW;y=GY+r*CH;
+    var g=S.grid[c][r];
+    var hx=hash2(c,r),hy=hash2(r+9,c+3);
+    if(g===T_D){
+      ctx.fillStyle=soilColor(c,r);
+      ctx.fillRect(x,y,CW,CH);
+      ctx.fillStyle="rgba(0,0,0,.14)";
+      ctx.fillRect(x+4+hx*30,y+4+hy*22,3,3);
+      ctx.fillRect(x+10+hy*26,y+14+hx*14,2,2);
+    }else if(g===T_R){
+      ctx.fillStyle="#6f6f78";ctx.fillRect(x,y,CW,CH);
+      ctx.fillStyle="#5a5a64";ctx.fillRect(x+3,y+3,CW-6,CH-6);
+      ctx.strokeStyle="#8b8b95";ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(x+6,y+8+hy*10);ctx.lineTo(x+CW-8,y+CH-10);ctx.stroke();
+      ctx.fillStyle="rgba(255,255,255,.12)";ctx.fillRect(x+5,y+4,CW-10,3);
+    }else if(g===T_T){
+      ctx.fillStyle="#191009";ctx.fillRect(x,y,CW,CH);
+      // 洞壁碎渣
+      ctx.fillStyle="rgba(122,82,48,.55)";
+      if(c>0&&S.grid[c-1][r]!==T_T){ctx.fillRect(x,y+3+hy*8,3,3);ctx.fillRect(x,y+CH-8,2,2);}
+      if(c<COLS-1&&S.grid[c+1][r]!==T_T){ctx.fillRect(x+CW-3,y+6,3,3);ctx.fillRect(x+CW-2,y+CH-12,2,2);}
+      if(r>0&&S.grid[c][r-1]!==T_T){ctx.fillRect(x+6,y,3,3);ctx.fillRect(x+CW-12,y,2,2);}
+      if(r<ROWS-1&&S.grid[c][r+1]!==T_T){ctx.fillRect(x+8,y+CH-3,3,3);ctx.fillRect(x+CW-8,y+CH-2,2,2);}
+    }else if(g===T_F){
+      ctx.fillStyle="#4c3620";ctx.fillRect(x,y,CW,CH);
+      ctx.fillStyle="#5f452a";ctx.fillRect(x+2,y+2,CW-4,CH-4);
+      ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(x+8,y+CH-8);ctx.lineTo(x+CW-8,y+8);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x+8,y+8);ctx.lineTo(x+CW-8,y+CH-8);ctx.stroke();
+    }
+  }
+  // 房间
+  for(var i=0;i<S.rooms.length;i++)drawRoom(S.rooms[i]);
+  // 蚁后室标记光晕
+  var qg=ctx.createRadialGradient(S.queen.x,S.queen.y,4,S.queen.x,S.queen.y,64);
+  qg.addColorStop(0,"rgba(255,206,107,.18)");qg.addColorStop(1,"rgba(255,206,107,0)");
+  ctx.fillStyle=qg;ctx.fillRect(GX+7*CW,GY+10*CH,CW*6,CH*4);
+  // 蛹
+  for(i=0;i<S.broods.length;i++){
+    var b=S.broods[i];
+    var bx=cellCX(b.c)+Math.sin(i*2.4)*8,by=cellCY(b.r)+2;
+    ctx.fillStyle="#e8dcc2";
+    ctx.beginPath();ctx.ellipse(bx,by,4,5.5,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle="rgba(120,90,50,.6)";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(bx-3,by);ctx.lineTo(bx+3,by);ctx.stroke();
+  }
+  // 挖掘/回填标记
+  for(i=0;i<S.digs.length;i++){
+    var d=S.digs[i],dx2=GX+d.c*CW,dy2=GY+d.r*CH;
+    ctx.save();
+    ctx.strokeStyle="#ffce6b";ctx.lineWidth=2;
+    ctx.setLineDash([5,4]);ctx.lineDashOffset=-S.time*22;
+    ctx.strokeRect(dx2+2,dy2+2,CW-4,CH-4);
+    ctx.setLineDash([]);
+    ctx.fillStyle="rgba(255,206,107,.25)";
+    ctx.fillRect(dx2+2,dy2+2+(CH-4)*(1-Math.min(1,d.prog/d.need)),CW-4,(CH-4)*Math.min(1,d.prog/d.need));
+    ctx.restore();
+  }
+  for(i=0;i<S.fills.length;i++){
+    var fl=S.fills[i];
+    ctx.fillStyle="rgba(80,55,30,"+(0.7*(1-fl.t/0.8))+")";
+    ctx.fillRect(GX+fl.c*CW+3,GY+fl.r*CH+3,CW-6,CH-6);
+  }
+  // 食物
+  for(i=0;i<S.foods.length;i++)drawFood(S.foods[i]);
+  // 蚁狮坑
+  for(i=0;i<S.threats.length;i++)drawPit(S.threats[i]);
+  // 蚂蚁
+  for(i=0;i<S.ants.length;i++)drawAnt(S.ants[i]);
+  drawQueen();
+  // 蜘蛛
+  for(i=0;i<S.spiders.length;i++)if(!S.spiders[i].dead)drawSpider(S.spiders[i]);
+  // 粒子
+  for(i=0;i<S.parts.length;i++){
+    var p=S.parts[i];
+    ctx.globalAlpha=Math.max(0,p.life/0.5);
+    ctx.fillStyle=p.color;
+    ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+  }
+  ctx.globalAlpha=1;
+  // 浮字
+  ctx.font="800 13px -apple-system,Arial,sans-serif";ctx.textAlign="center";
+  for(i=0;i<S.floats.length;i++){
+    var f3=S.floats[i];
+    ctx.globalAlpha=Math.min(1,f3.life/0.4);
+    ctx.fillStyle=f3.color;
+    ctx.fillText(f3.txt,f3.x,f3.y);
+  }
+  ctx.globalAlpha=1;
+  // 警报红晕
+  if(S.alarm||S.queenFlash>0){
+    ctx.strokeStyle="rgba(255,80,50,"+(0.35+0.25*Math.sin(S.time*10))+")";
+    ctx.lineWidth=10;
+    ctx.strokeRect(5,5,W-10,H-10);
+  }
+}
+function drawBackdrop(){
+  var g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#20170d");g.addColorStop(0.5,"#17100a");g.addColorStop(1,"#100b06");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="rgba(122,82,48,.06)";
+  for(var i=0;i<26;i++){
+    var hx=hash2(i,3),hy=hash2(i,7);
+    ctx.beginPath();ctx.arc(hx*W,hy*H,20+hx*40,0,Math.PI*2);ctx.fill();
+  }
+}
+function drawRoom(rm){
+  var x=GX+rm.c*CW,y=GY+rm.r*CH,w=CW*2,h=CH*2;
+  if(rm.type==="nursery"){
+    ctx.fillStyle="rgba(140,90,40,.28)";ctx.fillRect(x,y,w,h);
+    for(var i=0;i<3;i++){
+      var ex=x+14+i*24,ey=y+h/2+Math.sin(S.time*2+i)*2;
+      ctx.fillStyle="#efe3c8";
+      ctx.beginPath();ctx.ellipse(ex,ey,5,7,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle="rgba(150,110,60,.7)";ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(ex-4,ey);ctx.lineTo(ex+4,ey);ctx.stroke();
+    }
+  }else if(rm.type==="store"){
+    ctx.fillStyle="rgba(90,70,30,.3)";ctx.fillRect(x,y,w,h);
+    for(var i2=0;i2<4;i2++){
+      var sx2=x+16+(i2%2)*30,sy2=y+h/2+Math.floor(i2/2)*18;
+      ctx.fillStyle="#e0b25a";
+      ctx.beginPath();ctx.ellipse(sx2,sy2,7,5,0.4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="rgba(120,80,20,.5)";
+      ctx.beginPath();ctx.ellipse(sx2+2,sy2-2,3,2,0.4,0,Math.PI*2);ctx.fill();
+    }
+  }else{
+    ctx.fillStyle="rgba(90,30,20,.3)";ctx.fillRect(x,y,w,h);
+    ctx.fillStyle="#8a2f22";
+    ctx.fillRect(x+w/2-3,y+8,6,18);
+    ctx.fillRect(x+w/2-10,y+8,20,5);
+    ctx.strokeStyle="#d8c9a8";ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(x+14,y+h-12);ctx.lineTo(x+34,y+h-26);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+34,y+h-12);ctx.lineTo(x+14,y+h-26);ctx.stroke();
+  }
+}
+function drawFood(f){
+  var y=SURF_Y-6+Math.sin(S.time*2+f.bob)*2;
+  var glow=ctx.createRadialGradient(f.fx,y,2,f.fx,y,20);
+  glow.addColorStop(0,"rgba(255,220,120,.55)");glow.addColorStop(1,"rgba(255,220,120,0)");
+  ctx.fillStyle=glow;
+  ctx.fillRect(f.fx-20,y-20,40,40);
+  if(f.kind==="seed"){
+    ctx.fillStyle="#d8a84e";
+    ctx.beginPath();ctx.ellipse(f.fx-4,y,4,6,0.3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(f.fx+4,y+2,3.4,5,-0.3,0,Math.PI*2);ctx.fill();
+  }else{
+    ctx.fillStyle="#e8c96a";
+    ctx.beginPath();ctx.moveTo(f.fx,y-9);
+    ctx.quadraticCurveTo(f.fx+7,y+2,f.fx,y+7);
+    ctx.quadraticCurveTo(f.fx-7,y+2,f.fx,y-9);ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.5)";
+    ctx.beginPath();ctx.ellipse(f.fx-2,y,1.6,3,0,0,Math.PI*2);ctx.fill();
+  }
+  // 剩余量
+  var loads=Math.ceil(f.amount/5);
+  ctx.fillStyle="#ffce6b";
+  for(var i=0;i<loads;i++)ctx.fillRect(f.fx-5+i*8,SURF_Y+4,5,3);
+}
+function drawPit(p){
+  var y=SURF_Y+2;
+  for(var i=0;i<4;i++){
+    ctx.fillStyle="rgba("+(60-i*10)+","+(40-i*7)+","+(24-i*5)+","+(0.85-i*0.12)+")";
+    ctx.beginPath();ctx.ellipse(p.x,y,p.r*(1-i*0.2),p.r*0.36*(1-i*0.2),0,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle="#120a05";
+  ctx.beginPath();ctx.ellipse(p.x,y,p.r*0.24,p.r*0.1,0,0,Math.PI*2);ctx.fill();
+  // 大颚
+  ctx.strokeStyle="#c98a4a";ctx.lineWidth=1.6;
+  var wig=Math.sin(S.time*6)*2;
+  ctx.beginPath();ctx.moveTo(p.x-6,y-2);ctx.lineTo(p.x-10,y-6-wig);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(p.x+6,y-2);ctx.lineTo(p.x+10,y-6+wig);ctx.stroke();
+  if(!p.dead&&p.life<12){
+    ctx.fillStyle="rgba(255,154,122,.8)";
+    ctx.font="700 10px Arial";ctx.textAlign="center";
+    ctx.fillText(Math.ceil(p.life)+"s",p.x,y-p.r*0.5-6);
+  }
+}
+function drawSpider(sp){
+  var x=sp.x,y=sp.y;
+  ctx.save();ctx.translate(x,y);ctx.scale(sp.dir<0?-1:1,1);
+  ctx.strokeStyle="#2c2438";ctx.lineWidth=2;
+  for(var i=0;i<4;i++){
+    var ph=Math.sin(sp.ph+i*1.7)*4;
+    ctx.beginPath();ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(-8+i*5,-10,-12+i*7,-18+ph);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(-10+i*6,-6,-16+i*8,-14-ph);ctx.stroke();
+  }
+  ctx.fillStyle="#3a2f4a";
+  ctx.beginPath();ctx.ellipse(-7,0,9,6.5,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(3,-1,5.5,4.5,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#ff5a4a";
+  ctx.beginPath();ctx.arc(5.5,-2.5,1.1,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(5.5,0.8,1.1,0,Math.PI*2);ctx.fill();
+  // 血条
+  ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(-12,-24,24,4);
+  ctx.fillStyle="#ff7a5c";ctx.fillRect(-12,-24,24*sp.hp/5,4);
+  ctx.restore();
+}
+function drawAnt(a){
+  var col=a.type==="w"?"#8a5a2b":"#a03d20";
+  var sc=a.type==="s"?1.28:1;
+  ctx.save();ctx.translate(a.x,a.y);ctx.scale(a.dirX<0?-sc:sc,sc);
+  // 足
+  ctx.strokeStyle=col;ctx.lineWidth=1.1;
+  for(var i=0;i<3;i++){
+    var ph=Math.sin(a.ph+i*2.1)*2.4;
+    var lx=-2+i*2.6;
+    ctx.globalAlpha=0.55;
+    ctx.beginPath();ctx.moveTo(lx,-1);ctx.lineTo(lx-2+ph*0.6,5);ctx.stroke();
+    ctx.globalAlpha=1;
+    ctx.beginPath();ctx.moveTo(lx+1,-1);ctx.lineTo(lx+2.5+ph,5);ctx.stroke();
+  }
+  // 三节身
+  ctx.fillStyle=col;
+  ctx.beginPath();ctx.ellipse(-4.6,-0.5,4.6,3,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(0,-0.5,3,2.2,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(3.8,-1,2.4,2,0,0,Math.PI*2);ctx.fill();
+  if(a.type==="s"){ // 兵蚁大颚
+    ctx.strokeStyle="#7a2410";ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.moveTo(5.6,-1.6);ctx.quadraticCurveTo(8.6,-3.4,9,-0.6);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(5.6,-0.4);ctx.quadraticCurveTo(8.6,0.6,8.8,2);ctx.stroke();
+  }
+  if(a.carry>0){
+    ctx.fillStyle="#e0b25a";
+    ctx.beginPath();ctx.arc(6.4,-3.4,2.6,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+  if(a.state==="digging"){
+    ctx.fillStyle="rgba(255,206,107,.9)";
+    ctx.fillRect(a.x-1.5,a.y-12,3,3);
+  }
+  if(a.state==="guard"||a.state==="hold"){
+    ctx.strokeStyle="rgba(255,122,92,.6)";ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(a.x,a.y,9,0,Math.PI*2);ctx.stroke();
+  }
+}
+function drawQueen(){
+  var q=S.queen,x=q.x,y=q.y;
+  // 侍卫簇
+  for(var i=0;i<3;i++){
+    var an=S.time*0.7+i*2.09;
+    var ax=x+Math.cos(an)*20,ay=y+6+Math.sin(an)*8;
+    ctx.save();ctx.translate(ax,ay);ctx.scale(Math.cos(an)>0?0.8:-0.8,0.8);
+    ctx.fillStyle="#8a5a2b";
+    ctx.beginPath();ctx.ellipse(-3,0,3.4,2.2,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(1,0,2.2,1.6,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(4,-0.5,1.8,1.4,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  // 蚁后本体
+  var flash=S.queenFlash>0?"#ff7a5c":"#b57434";
+  ctx.save();ctx.translate(x,y);
+  ctx.fillStyle=flash;
+  ctx.beginPath();ctx.ellipse(-9,1,13,8.5,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="rgba(90,50,20,.6)";ctx.lineWidth=1.4;
+  for(var s2=-1;s2<=1;s2++){
+    ctx.beginPath();ctx.moveTo(-4+s2*6,-6);ctx.quadraticCurveTo(-2+s2*6,1,-4+s2*6,8);ctx.stroke();
+  }
+  ctx.fillStyle=flash;
+  ctx.beginPath();ctx.ellipse(6,-1,4.6,3.4,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(11,-2,3.4,2.6,0,0,Math.PI*2);ctx.fill();
+  // 触角
+  ctx.strokeStyle=flash;ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(13,-3);ctx.quadraticCurveTo(16,-6,18,-5);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(13,-1);ctx.quadraticCurveTo(17,-1,19,1);ctx.stroke();
+  ctx.restore();
+  // 血量
+  for(var h=0;h<q.max;h++){
+    ctx.fillStyle=h<q.hp?"#9fe08a":"rgba(255,255,255,.18)";
+    ctx.fillRect(x-24+h*8,y-18,6,4);
+  }
+}
+
+// ---------- HUD / 界面 ----------
+function updateHUD(){
+  if(!S){return;}
+  el("foodV").textContent=Math.floor(S.food)+"/"+S.cap;
+  var w=0,s=0;
+  for(var i=0;i<S.ants.length;i++){if(S.ants[i].type==="w")w++;else s++;}
+  el("antV").textContent=alivePop()+" (W"+w+" S"+s+")";
+  var tv=el("threatV");
+  if(S.threatT<=5&&!S.over){tv.textContent="THREAT INCOMING!";tv.className="hot";}
+  else{tv.textContent="Next threat: "+Math.ceil(S.threatT)+"s";tv.className="";}
+  var tm=el("timerV"),pop=alivePop();
+  if(S.over)tm.textContent=S.won?"Victory!":"Defeat";
+  else if(S.time<600)tm.textContent="Win in "+fmtT(600-S.time);
+  else tm.textContent="Grow colony: "+pop+"/10";
+  // 按钮可用态
+  el("bNur").className="hbtn"+(S.food<COST.nursery?" dis":"")+(mode==="nursery"?" on":"");
+  el("bStore").className="hbtn"+(S.food<COST.store?" dis":"")+(mode==="store"?" on":"");
+  el("bBarr").className="hbtn"+(S.food<COST.barracks?" dis":"")+(mode==="barracks"?" on":"");
+  el("bSol").className="hbtn"+(S.food<15||barracksCount()<1?" dis":"");
+  el("bPost").className="hbtn"+(mode==="post"?" on":"");
+  el("bFill").className="hbtn"+(mode==="fill"?" on":"");
+}
+function setHint(){
+  var h=el("hint");
+  if(!S||S.screen!=="play"){h.textContent="";return;}
+  if(mode==="dig")h.textContent="Tap dirt: dig (2 workers) · Tap food: forage · Tap pit: attack";
+  else if(mode==="fill")h.textContent="Fill mode: tap a tunnel to backfill it (tap again on button to exit)";
+  else if(mode==="post")h.textContent="Post mode: tap a tunnel cell to station a soldier";
+  else h.textContent="Build mode: tap the top-left of a 2x2 dug space";
+}
+function hideOverlay(){el("overlay").style.display="none";}
+function showOverlay(html){el("panel").innerHTML=html;el("overlay").style.display="flex";}
+function showMenu(){
+  if(S)S.screen="menu";
+  S=null;
+  var maps="";
+  for(var i=0;i<3;i++){
+    maps+='<button class="mapBtn" data-act="map" data-i="'+i+'"><b>'+(i+1)+'. '+MAPS[i].name+'</b><span>'+MAPS[i].desc+(bests[i]?" · Best: "+bests[i]:"")+'</span></button>';
+  }
+  showOverlay('<h1>ANT COLONY</h1><p>Dig the underworld. Feed the brood. Guard the queen.</p>'+
+    '<div class="maps">'+maps+'</div>'+
+    '<div class="howto"><b>How to play</b><br>'+
+    '· Tap dirt next to a tunnel to send 2 workers digging deeper (deeper = slower).<br>'+
+    '· Tap glowing food on the surface — workers haul it home (beware predators).<br>'+
+    '· Build rooms on dug 2x2 spaces: Nursery (+50% eggs), Store (+30 cap), Barracks (unlocks soldiers).<br>'+
+    '· Every 60s a predator strikes: antlions trap foragers, spiders invade tunnels. Post soldiers or backfill tunnels (Fill) to seal them out.<br>'+
+    '· Survive 10 minutes with 10+ ants and a living queen to win.</div>'+
+    '<p style="margin-top:8px">Food feeds every ant each 30s — grow wisely.</p>');
+}
+function showEnd(){
+  var t=fmtT(S.time);
+  var html='<h2>'+(S.won?"Victory!":"Defeat")+'</h2>'+
+    '<p>'+(S.won?"The colony thrives — the queen is safe.":S.reason)+'</p>'+
+    '<div class="final">'+S.score+'</div>'+
+    (S.newBest?'<p style="color:#ffce6b;font-weight:800">NEW BEST!</p>':'')+
+    '<p>Time survived: '+t+'<br>Colony: '+alivePop()+' ants · Food gathered: '+S.gathered+'<br>Rooms: '+S.rooms.length+' · Predators survived: '+S.threatN+'</p>'+
+    '<div class="row"><button class="pbtn" data-act="again">Play Again</button><button class="pbtn alt" data-act="menu">Menu</button></div>';
+  showOverlay(html);
+}
+function showPause(){
+  S.paused=true;
+  showOverlay('<h2>Paused</h2><p>Map '+(S.mi+1)+' · '+MAPS[S.mi].name+'</p>'+
+    '<div class="row"><button class="pbtn" data-act="resume">Resume</button><button class="pbtn alt" data-act="restart">Restart</button><button class="pbtn alt" data-act="menu">Menu</button></div>');
+}
+function startGame(mi,seed){
+  newGame(mi,seed);
+  try{
+    if(window.__portal==="crazygames"&&window.CrazyGames&&window.CrazyGames.SDK){
+      window.CrazyGames.SDK.game.gameplayStart();
+    }
+  }catch(e){}
+}
+
+// ---------- 输入 ----------
+function worldXY(clientX,clientY){
+  var rect=canvas.getBoundingClientRect();
+  return {x:(clientX-rect.left-vox)/vs,y:(clientY-rect.top-voy)/vs};
+}
+function tap(x,y){
+  if(!S||S.screen!=="play"||S.paused||S.over)return;
+  ensureAudio();
+  // 地表：食物 / 蚁狮坑
+  if(y<SURF_Y+30){
+    for(var i=0;i<S.threats.length;i++){
+      var p=S.threats[i];
+      if(!p.dead&&Math.abs(x-p.x)<p.r&&Math.abs(y-SURF_Y)<40){attackPit(p);return;}
+    }
+    for(i=0;i<S.foods.length;i++){
+      var f=S.foods[i];
+      if(f.amount>0&&Math.abs(x-f.fx)<24&&y>20){tapFood(f);return;}
+    }
+  }
+  var c=Math.floor((x-GX)/CW),r=Math.floor((y-GY)/CH);
+  if(c<0||c>=COLS||r<0||r>=ROWS)return;
+  if(mode==="fill"){tryFill(c,r);return;}
+  if(mode==="post"){postSoldier(c,r);mode="dig";setHint();return;}
+  if(mode==="nursery"||mode==="store"||mode==="barracks"){
+    if(tryBuild(mode,c,r)){mode="dig";setHint();}
+    return;
+  }
+  orderDig(c,r);
+}
+canvas.addEventListener("mousemove",function(e){
+  if(!S||S.screen!=="play")return;
+  var p=worldXY(e.clientX,e.clientY);
+  S.hover=[p.x,p.y];
+});
+canvas.addEventListener("mousedown",function(e){
+  var p=worldXY(e.clientX,e.clientY);tap(p.x,p.y);
+});
+canvas.addEventListener("touchstart",function(e){
+  e.preventDefault();
+  var t=e.touches[0],p=worldXY(t.clientX,t.clientY);tap(p.x,p.y);
+},{passive:false});
+canvas.addEventListener("touchmove",function(e){e.preventDefault();},{passive:false});
+document.addEventListener("contextmenu",function(e){if(e.target===canvas)e.preventDefault();});
+
+// ---------- 按钮绑定 ----------
+el("muteBtn").addEventListener("click",function(){
+  muted=!muted;
+  try{localStorage.setItem("ac_mute",muted?"1":"0");}catch(e){}
+  el("muteBtn").textContent=muted?"Sound: Off":"Sound: On";
+});
+el("spdBtn").addEventListener("click",function(){
+  if(!S)return;
+  S.speed=S.speed===1?2:1;
+  el("spdBtn").textContent=S.speed+"x";
+});
+el("menuBtn").addEventListener("click",function(){
+  if(S&&S.screen==="play"&&!S.over)showPause();
+  else showMenu();
+});
+el("bNur").addEventListener("click",function(){mode=mode==="nursery"?"dig":"nursery";setHint();});
+el("bStore").addEventListener("click",function(){mode=mode==="store"?"dig":"store";setHint();});
+el("bBarr").addEventListener("click",function(){mode=mode==="barracks"?"dig":"barracks";setHint();});
+el("bSol").addEventListener("click",function(){trainSoldier();});
+el("bPost").addEventListener("click",function(){mode=mode==="post"?"dig":"post";setHint();});
+el("bFill").addEventListener("click",function(){mode=mode==="fill"?"dig":"fill";setHint();});
+el("panel").addEventListener("click",function(e){
+  var b=e.target.closest?e.target.closest("[data-act]"):null;
+  if(!b)return;
+  var act=b.getAttribute("data-act");
+  ensureAudio();
+  if(act==="map"){startGame(+b.getAttribute("data-i"));}
+  else if(act==="again"){startGame(S.mi);}
+  else if(act==="restart"){startGame(S.mi);}
+  else if(act==="resume"){S.paused=false;hideOverlay();}
+  else if(act==="menu"){showMenu();}
+});
+if(muted)el("muteBtn").textContent="Sound: Off";
+
+// ---------- 主循环 ----------
+var last=0;
+function frame(t){
+  var dt=Math.min((t-last)/1000,0.05);last=t;
+  if(S&&S.screen==="play"&&!S.paused&&!S.over)update(dt*S.speed);
+  else if(S&&S.screen==="play"&&S.over)updateFx(dt);
+  render();
+  if(S)updateHUD();
+  requestAnimationFrame(frame);
+}
+showMenu();
+requestAnimationFrame(frame);
+
+// ---------- 测试钩子（不影响游戏逻辑） ----------
+window.__ac={ver:1,
+  new:function(mi,seed){startGame(mi,seed);},
+  step:function(sec){
+    if(!S)return null;
+    var n=Math.min(4000,Math.ceil(sec/(1/60)));
+    for(var i=0;i<n;i++){if(S.over)break;update(1/60);}
+    return this.state();
+  },
+  state:function(){
+    if(!S)return null;
+    var w=0,s=0;
+    for(var i=0;i<S.ants.length;i++){if(S.ants[i].type==="w")w++;else s++;}
+    return {food:S.food,cap:S.cap,pop:w+s,workers:w,soldiers:s,queenHp:S.queen.hp,
+      time:S.time,threatT:S.threatT,threatN:S.threatN,over:S.over,won:S.won,
+      reason:S.reason,score:S.score||0,gathered:S.gathered,rooms:S.rooms.length,digs:S.digs.length};
+  },
+  ants:function(){return S?S.ants:[];},
+  foods:function(){return S?S.foods:[];},
+  spiders:function(){return S?S.spiders:[];},
+  threats:function(){return S?S.threats:[];},
+  digs:function(){return S?S.digs:[];},
+  gridVal:function(c,r){return S?S.grid[c][r]:-1;},
+  api:{
+    dig:orderDig, fill:tryFill, build:tryBuild, train:trainSoldier,
+    post:function(c,r){var ok=postSoldier(c,r);if(ok){mode="dig";}return ok;},
+    tapFood:function(i){return tapFood(S.foods[i]);},
+    attackPit:function(i){return attackPit(S.threats[i]);}
+  },
+  util:{bfs:function(a,b,s){return bfs(a,b,s!==false);},pass:pass,entranceCols:entranceCols,
+    queenKeys:queenKeys,depositKeys:depositKeys,cellCX:cellCX,cellCY:cellCY,key:key,surfacePossible:surfacePossible,
+    isRock:function(c,r){return S?S.grid[c][r]===T_R:false;}},
+  dbg:{
+    setFoodSpawns:function(on){S.foodSpawns=on;},
+    setThreats:function(on){S.threatsOn=on;},
+    spawnSpider:function(ec){var sp={cx:-1,cy:-1,x:cellCX(ec)+(ec>10?-160:160),y:SURF_Y,hp:3,path:[],state:"surface",biteT:0,ec:ec,lifeT:22,dir:1,dead:false,ph:0};S.spiders.push(sp);return sp;},
+    spawnPit:function(c){var p={kind:"pit",c:c,x:cellCX(c),r:34,life:30,dmg:0,dead:false};S.threats.push(p);return p;},
+    setFood:function(v){S.food=v;},
+    forceThreat:function(){spawnThreat();},
+    S:function(){return S;}
+  }
+};
+</script>
+</body>
+</html>
